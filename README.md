@@ -1,0 +1,1 @@
+# Tarkkood-alused_S25
