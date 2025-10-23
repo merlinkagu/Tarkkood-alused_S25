@@ -835,7 +835,8 @@ Uuri rohkem võimalusi erinevatelt
 ```{r fig.width=11, fig.height=7}
 library(tidyverse)
 library(patchwork)
-library(viridis)   # värvipalett
+library(viridis)
+library(viridisLite)# värvipalett
 
 Isd_na <- Isd %>% drop_na(Drug, Diff)
 
@@ -900,7 +901,7 @@ final
 
 ```
 
-```{}
+```         
 ```
 
 #### Boonus
