@@ -90,7 +90,6 @@ väärtused)*:
 Loo muutujad iga kulu jaoks *(määrake valem, nt* `y <- a + b`*)*:
 
 -   **`venue_cost`** saali rendi jaoks
-venue_cost <- 100
 
 -   **`food_cost_per_person`** toidu jaoks inimese kohta
 food_cost_per_person <- 15
@@ -122,13 +121,24 @@ et näha, kuidas kulu muutub.
 Vihje: Funktsioon peab arvestama kõiki kulusid: saal, toit, joogid ja
 meelelahutus. Arvesta, et "scope" töötab samuti nagu `pythonis`.
 
+
 ```{r}
-
-total_party_cost <- function(n=10) { # n - osalejate arv
-
-
+total_party_cost <- function(number_of_people) { #number_of_people on osalejate arv
+  venue_cost <- 100
+  food_cost_per_person <- 15
+  drink_cost_per_person <- 5
+  entertainment_cost <- 50
   
+  total <- venue_cost +
+           (food_cost_per_person * number_of_people) +
+           (drink_cost_per_person * number_of_people) +
+           entertainment_cost
+  
+  return(total)
 }
+
+#proovin kas funktsioon töötab
+total_party_cost(10)
 
 ```
 
@@ -142,8 +152,11 @@ Nende mõistmine on oluline tõhusaks andmetöötluseks ja analüüsiks.
     järjestamiseks.
 
 ```{r}
-v <- c(1, 2, 3, 4, 5)
+v <- c(1, 2, 3, 4, 5) 
 print(v)
+
+j <- c(1, 2, 3)+1
+print(j)
 
 # mixed_v = c(1, "õun", TRUE)
 # print(mixed_v)
@@ -237,6 +250,51 @@ Sul on andmed õpilaste kohta kolmest klassist: Bioloogia, Keemia ja Füüsika. 
 ```{r}
 # Lisa siia vastuste ja lahenduste kood
 
+# 1
+nimed <- c("Anna", "Mike", "Luis")
+vanused <- c(20, 21, 19)
+punktid <- c(85, 78, 90)
+
+#2
+vanused_maatriks <- c(20, 21, 19, 22, 20, 23, 24, 22, 25)
+punktid_maatriks <- c(85, 78, 90, 88, 76, 95, 87, 80, 92)
+opilased_matrix <- matrix(c(vanused_maatriks, punktid_maatriks), ncol = 2)
+colnames(opilased_matrix) <- c("Vanus", "Punktid")
+opilased_matrix
+
+```
+
+```{r}
+#3
+nimed_koik <- c("Anna", "Mike", "Luis", "Sam", "Ella", "Ravi", "Mia", "Jack", "Olivia")
+klassid <- c("Bioloogia", "Bioloogia", "Bioloogia",
+             "Keemia", "Keemia", "Keemia",
+             "Füüsika", "Füüsika", "Füüsika")
+
+opilased_df <- data.frame(
+  Nimi = nimed_koik,
+  Vanus = vanused_maatriks,
+  Punktid = punktid_maatriks,
+  Klass = klassid
+)
+
+opilased_df
+```
+
+```{r}
+#4
+Anna <- list(
+  Nimi = "Anna",
+  Vanus = 20,
+  Punktid = 85,
+  Klass = "Bioloogia"
+)
+
+Anna
+
+#5
+korg_punktid <- subset(opilased_df, Punktid > 85, select = c(Nimi, Klass))
+korg_punktid
 ```
 
 ## Tidyverse laadimine
@@ -269,7 +327,7 @@ formaatide lugemiseks. Siin keskendume CSV ja TSV failidele.
 ```{r eval=FALSE}
 # Loe andmed CSV failist
 
-data_csv <- read_csv("../../data/Islander_data.csv")
+data_csv <- read_csv("Islander_data.csv")
 
 # Kuvab esimesed read
 data_csv
@@ -316,6 +374,13 @@ funktsioonis `read_excel()`.
 
 Leia paremal asuvast `Abi` paneelist `read_tsv` funktsioon. Mitu erinevat
 käsurea argumenti on `read_tsv` funktsioonil defineeritud?
+
+Vastus: 20 erinevat argumenti on.
+
+```{r}
+?read_tsv
+args(readr::read_tsv)
+```
 
 ## Andmete kõrgetasemeline ülevaade tidyverse toruga (pipe, `%>%`)
 
@@ -577,6 +642,76 @@ erinevate ravimite ja nende dooside mõju mälule.
 
 ```{r}
 
+
+# 1
+
+# Esimesed 10 rida
+data_mem <- data_csv
+colnames(data_mem)
+data_mem1 <- data_mem %>%
+  mutate(Diff = Mem_Score_After - Mem_Score_Before)
+head(data_mem1, 10)
+
+# Üldine keskmine enne ja pärast
+data_mem1 %>%
+  summarise(
+    mean_before = mean(Mem_Score_Before, na.rm = TRUE),
+    mean_after  = mean(Mem_Score_After,  na.rm = TRUE))
+```
+
+```{r}
+# 2
+
+# Grupp Drug järgi: keskmine Diff + osalejate arv; sort kahanevalt
+data_mem1 %>%
+  group_by(Drug) %>%
+  summarise(
+    mean_diff = mean(Diff, na.rm = TRUE),
+    n = n()) %>%
+  arrange(desc(mean_diff))
+```
+
+```{r}
+# 3
+
+# Grupp Drug + dosage; keskmine Diff; sort Drug sees Diff kahanevalt
+data_mem1 %>%
+  group_by(Drug, Dosage) %>%
+  summarise(
+    mean_diff = mean(Diff, na.rm = TRUE),
+    n = n()) %>%
+  arrange(Drug, desc(mean_diff))
+```
+
+```{r}
+# 4
+
+# Tunnuse age_group loomine ja keskmiste arvutamine Drug x age_group lõikes
+data_mem1 %>%
+  mutate(
+    age_group = case_when(
+      age < 30 ~ "Noor",
+      age >= 30 & age <= 50 ~ "Keskealine",
+      age > 50 ~ "Seenior"))%>%
+  group_by(age_group, Drug) %>%
+  summarise(
+    mean_diff = mean(Diff, na.rm = TRUE),
+    n = n()) %>%
+  arrange(age_group, desc(mean_diff))
+```
+
+```{r}
+# 5
+
+data_mem1 %>%
+  group_by(Happy_Sad_group) %>%
+  summarise(
+    mean_before = mean(Mem_Score_Before, na.rm = TRUE),
+    mean_after  = mean(Mem_Score_After, na.rm = TRUE),
+    mean_diff   = mean(Diff, na.rm = TRUE),
+    n = n()) %>%
+  mutate(delta = mean_after - mean_before) %>%
+  arrange(desc(mean_diff))
 ```
 
 # Andmestiku kohta
@@ -630,7 +765,8 @@ Andmestiku kirjeldus
 Lihtsaim viis andmete lugemiseks on kasutada `read_csv` käsku:
 
 ```{r}
-Isd <- read_csv('../../data/Islander_data.csv')
+#Isd <- read_csv('../../data/Islander_data.csv')
+#juba varem on sisseloetud andmestik
 
-Isd
+#Isd
 ```

@@ -93,7 +93,7 @@ Andmestiku kirjeldus
 Lihtsaim viis andmete lugemiseks on kasutada `read_csv` käsku:
 
 ```{r}
-Isd <- read_csv('../../data/Islander_data.csv')
+Isd <- read_csv('Islander_data.csv')
 
 Isd
 ```
@@ -181,7 +181,14 @@ erinevate ravimite ja nende dooside mõju mälu taastamisele.
 ```{r}
 # Loo vanuserühma veerg
 
+Isd <- Isd %>%
+  mutate(
+    age_group = case_when(
+      age < 30 ~ "Noor",
+      age >= 30 & age <= 50 ~ "Keskealine",
+      age > 50 ~ "Seenior"))
 
+head(Isd[, c("age", "age_group")])
 ```
 
 # Joonistamine ggplot2-ga
@@ -445,6 +452,32 @@ heledaks (läbipaistvaks), kasuta positsiooni `jitter`. Rohkem võimalusi leiad
 spikrilt.
 
 ```{r fig.width=8, fig.height=6}
+Isd <- Isd %>%
+  mutate(Diff = Mem_Score_After - Mem_Score_Before)
+
+Isd %>%
+  filter(!is.na(Drug), !is.na(Diff)) %>%
+  ggplot(aes(x = Drug, y = Diff, fill = Drug)) +
+  # Jaotuse kuju (tihedus)
+  geom_violin(trim = FALSE, alpha = 0.6, color = NA) +
+  # Üksikpunktid, jitter, et kattumist vähendada
+  geom_point(
+    aes(color = Drug),
+    position = position_jitter(width = 0.15, height = 0, seed = 1),
+    alpha = 0.5, size = 1.8, show.legend = FALSE
+  ) +
+  # Mediaani esiletõstmine
+  stat_summary(
+    fun = median, geom = "crossbar", width = 0.5, fatten = 0, color = "black"
+  ) +
+  guides(fill = "none", color = "none") +
+  labs(
+    title = "Ravimi mõju mälule: Diff jaotused ravimi (Drug) lõikes",
+    subtitle = "Violin = jaotuse tihedus; must joon = mediaan; punktid = üksikosalejad",
+    x = "Ravim (Drug)",
+    y = "Mälu muutus (Diff = After - Before)"
+  ) +
+  theme_minimal(base_size = 12)
 
 
 
@@ -799,10 +832,75 @@ kujutiseni (*ilma* legendita).
 Uuri rohkem võimalusi erinevatelt
 [spikritelt](https://posit.co/resources/cheatsheets/).
 
-```{r}
+```{r fig.width=11, fig.height=7}
+library(tidyverse)
+library(patchwork)
+library(viridis)   # värvipalett
+
+Isd_na <- Isd %>% drop_na(Drug, Diff)
 
 
+theme_pub <- theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16, hjust = 0),
+    plot.subtitle = element_text(color = "grey30", margin = margin(b = 6)),
+    axis.title = element_text(face = "bold"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    strip.background = element_rect(fill = "grey95", color = NA),
+    strip.text = element_text(face = "bold"),
+    legend.position = "none",
+    plot.margin = margin(10, 12, 10, 12)
+  )
 
+pal <- viridis(n = length(unique(Isd_na$Drug)), option = "D", begin = .1, end = .9)
+
+# jaotus ravimi lõikes
+set.seed(2)
+pA <- ggplot(Isd_na, aes(x = Drug, y = Diff, fill = Drug, color = Drug)) +
+  geom_violin(trim = FALSE, alpha = 0.85, color = NA, width = .9) +
+  stat_summary(fun = median, geom = "crossbar", width = .5, fatten = 0, color = "grey10") +
+  geom_jitter(width = .12, height = 0, alpha = .12, size = 1.6) +
+  scale_fill_manual(values = pal) +
+  scale_color_manual(values = pal) +
+  labs(title = "Mälu muutus (Diff) ravimi lõikes",
+       x = NULL, y = "Diff (After - Before)") +
+  theme_pub
+
+# doosiefekt 
+summ <- Isd_na %>%
+  group_by(Drug, Dosage) %>%
+  summarise(med = median(Diff, na.rm = TRUE), .groups = "drop")
+
+pB <- ggplot(summ, aes(x = Dosage, y = med, group = Drug, color = Drug)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2.6, stroke = 0) +
+  scale_color_manual(values = pal) +
+  labs(title = "Doosi mõju (mediaan Diff)", x = "Dosage", y = "Diff (mediaan)") +
+  theme_pub
+
+# vanuse trend
+pC <- ggplot(Isd_na, aes(x = age, y = Diff, color = Drug)) +
+  geom_point(alpha = .10, size = 1.2) +
+  geom_smooth(se = FALSE, linewidth = 1.1, span = .9) +
+  scale_color_manual(values = pal) +
+  labs(title = "Vanuse trend Diff-ile", x = "Age", y = "Diff") +
+  theme_pub
+
+# kokku liitmine üheks graafikuks
+final <- pA | (pB / pC) +
+  plot_annotation(
+    title = "Drugged Islanders: mälu muutuse profiil (legendita)",
+    subtitle = "Vasak: jaotus ravimi lõikes; Üleval parem: doosi efekt; All parem: vanuse trend",
+    caption = "Värvid on püsivad üle paneelide; läbipaistvad punktid vähendavad ülejoonistamist."
+  )
+
+final
+# ggsave("islander_clean_pub_fig.png", final, width = 11, height = 7, dpi = 320)
+
+```
+
+```         
 ```
 
 #### Boonus
