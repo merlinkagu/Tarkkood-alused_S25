@@ -606,7 +606,7 @@ ORDER BY average_price DESC;
 
 ```sql
 -- kirjuta oma vastus siia
-ELECT 
+SELECT 
     o.order_id,
     CONCAT(c.first_name, ' ', c.last_name) AS customer_name,
     COUNT(DISTINCT oi.product_id) AS product_count,
